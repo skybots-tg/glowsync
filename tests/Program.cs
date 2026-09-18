@@ -15,10 +15,18 @@ void Check(string name, bool ok, string detail = "")
     if (!ok) failures++;
 }
 
-// 1. Layout generator reproduces Skydimo's own maps.
+void Skip(string name, string why) => Console.WriteLine($"SKIP  {name}  — {why}");
+
+// 1. Layout generator reproduces Skydimo's own maps (only if Skydimo is installed here).
 string cfgDir = @"C:\Program Files (x86)\Skydimo\controler_config";
+bool hasSkydimoFiles = Directory.Exists(cfgDir);
 foreach (var (model, l, t, r, b) in new[] { ("SK0127", 17, 31, 17, 0), ("SK0L27", 17, 31, 17, 31), ("SK0201", 20, 20, 20, 0), ("SK0134", 15, 41, 15, 41) })
 {
+    if (!hasSkydimoFiles)
+    {
+        Skip($"layout {model}", "Skydimo не установлен");
+        continue;
+    }
     using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(cfgDir, model + ".json")));
     var map = doc.RootElement.GetProperty("ledMap").EnumerateArray().OrderBy(e => e.GetProperty("id").GetInt32())
         .Select(e => (e.GetProperty("x").GetInt32(), e.GetProperty("y").GetInt32())).ToList();
@@ -38,28 +46,37 @@ Check("layout ccw starts bottom-left going right", ccw[0].X == 0 && ccw[0].Y == 
 var offset = LayoutBuilder.Build(17, 31, 17, 0, StartCorner.BottomLeft, true, 5).Leds;
 Check("layout offset rotates", offset[0].Y == 11 && offset[^1].Y == 12);
 
-// 2. Handshake parsing with the real reply captured from COM8.
-var reply = Convert.FromHexString("534b303132372c3c12222308361d0d0a");
+// 2. Handshake parsing, shaped like a real controller reply: "SK0127," + 7 raw serial bytes + CRLF.
+//    The serial bytes deliberately contain 0x0D and 0x0A, which a naive line-based parser would cut.
+var reply = Convert.FromHexString("534b303132372c010d0a040506070d0a");
 var hello = DeviceManager.ParseHello(reply);
-Check("handshake parse", hello?.Model == "SK0127" && hello?.Serial == "3C12222308361D", $"{hello}");
+Check("handshake parse", hello?.Model == "SK0127" && hello?.Serial == "010D0A04050607", $"{hello?.Model} {hello?.Serial}");
 Check("handshake garbage", DeviceManager.ParseHello(new byte[] { 1, 2, 3 }) == null);
 
 // 3. Qt hotkeys from global.json.
 Check("qt key Up", SkydimoImporter.QtKeyToVirtualKey(16777235) == 0x26);
 Check("qt key F10", SkydimoImporter.QtKeyToVirtualKey(16777273) == 0x79);
 
-// 4. Importing the real Skydimo config.
+// 4. Importing an existing Skydimo installation, if there is one on this machine.
 var cfg = new AppConfig();
-var report = SkydimoImporter.Import(cfg);
-cfg.Normalize();
-foreach (var line in report) Console.WriteLine("      import: " + line);
-Check("import brightness", cfg.Brightness == 100);
-Check("import mode", cfg.Mode == EffectMode.Screen);
-Check("import model", cfg.Device.Model == "SK0127" && cfg.Device.Serial == "3C12222308361D");
-Check("import leds", cfg.Layout.Leds.Count == 65 && cfg.Layout.GridWidth == 31 && cfg.Layout.GridHeight == 17);
-Check("import fps", cfg.Screen.Fps == 30);
-var toggle = cfg.Hotkeys.First(h => h.Action == HotkeyAction.Toggle);
-Check("import hotkey toggle", toggle.Key == 0x79 && toggle.Modifiers == (HotkeyBinding.ModControl | HotkeyBinding.ModAlt | HotkeyBinding.ModShift), $"{toggle.Modifiers}+{toggle.Key}");
+if (SkydimoImporter.IsAvailable)
+{
+    var report = SkydimoImporter.Import(cfg);
+    cfg.Normalize();
+    foreach (var line in report) Console.WriteLine("      import: " + line);
+    Check("import brightness", cfg.Brightness is >= 0 and <= 100);
+    Check("import device", cfg.Device.Model is { Length: > 0 } && cfg.Device.LedCount > 0, $"{cfg.Device.Model} {cfg.Device.LedCount} LED");
+    Check("import leds", cfg.Layout.Leds.Count > 0 && cfg.Layout.GridWidth > 1 && cfg.Layout.GridHeight > 1,
+        $"{cfg.Layout.Leds.Count} шт., {cfg.Layout.GridWidth}x{cfg.Layout.GridHeight}");
+    Check("import fps", cfg.Screen.Fps is >= 10 and <= 60, $"{cfg.Screen.Fps}");
+    var toggle = cfg.Hotkeys.First(h => h.Action == HotkeyAction.Toggle);
+    Check("import hotkey toggle", toggle.Key != 0 && toggle.Modifiers != 0, $"{toggle.Modifiers}+{toggle.Key}");
+}
+else
+{
+    Skip("import", "настроек Skydimo нет — импортировать нечего");
+    cfg.Normalize();
+}
 
 // 5. Sampler vs Skydimo's real output for the gradient test pattern (R = x, G = y, B = distance to edge),
 //    reduced to 320x180 like the GPU mip level, then gamma 2.2 as the engine does.
@@ -77,10 +94,11 @@ for (int y = 0; y < H; y++)
         px[i] = (byte)Math.Round(Math.Clamp(dist / 720, 0, 1) * 255);
     }
 }
+var reference = LayoutBuilder.Build(17, 31, 17, 0, StartCorner.BottomLeft, true, 0).Leds; // SK0127
 var sampler = new ScreenSampler();
 sampler.Ingest(Fake(px, W, H), false);
 var colors = new Vector3[65];
-sampler.Sample(cfg.Layout.Leds, 31, 17, 1.0, Vortice.DXGI.ModeRotation.Identity, colors);
+sampler.Sample(reference, 31, 17, 1.0, Vortice.DXGI.ModeRotation.Identity, colors);
 int[,] skydimo =
 {
     {0,239,0},{0,207,0},{0,178,0},{0,154,0},{0,128,0},{0,107,0},{0,87,0},{0,71,0},{0,55,0},{0,41,0},{0,30,0},{0,21,0},{0,13,0},{0,7,0},{0,3,0},{0,1,0},{0,0,0},
@@ -123,7 +141,7 @@ Check("black bars detected", Math.Abs(bars.Bars.T - bar) <= 1 && bars.Bars.T == 
 
 // 7. Config JSON round-trip keeps everything.
 var clone = ConfigStore.Clone(cfg);
-Check("config round-trip", clone.Layout.Leds.Count == 65 && clone.Hotkeys.Count == 5 && clone.Device.Serial == cfg.Device.Serial && clone.Screen.Gamma == cfg.Screen.Gamma);
+Check("config round-trip", clone.Layout.Leds.Count == cfg.Layout.Leds.Count && clone.Hotkeys.Count == 5 && clone.Device.Serial == cfg.Device.Serial && clone.Screen.Gamma == cfg.Screen.Gamma);
 
 // 8. Night schedule across midnight.
 var night = new NightConfig { Enabled = true, From = "23:00", To = "07:00" };
@@ -149,14 +167,14 @@ using (var capture = new DesktopCapture())
         var live = new ScreenSampler();
         live.Ingest(capture, true);
         var liveColors = new Vector3[65];
-        live.Sample(cfg.Layout.Leds, 31, 17, 1.0, capture.Rotation, liveColors);
+        live.Sample(reference, 31, 17, 1.0, capture.Rotation, liveColors);
         Console.WriteLine("      live LED 1/33/65: " + string.Join(" | ", new[] { 0, 32, 64 }.Select(i => ColorMath.ToHex(liveColors[i]))));
         var timer = System.Diagnostics.Stopwatch.StartNew();
         int n = 0;
         while (timer.ElapsedMilliseconds < 1000)
         {
             if (capture.Update("") == CaptureResult.NewFrame) { live.Ingest(capture, true); n++; }
-            live.Sample(cfg.Layout.Leds, 31, 17, 1.0, capture.Rotation, liveColors);
+            live.Sample(reference, 31, 17, 1.0, capture.Rotation, liveColors);
         }
         Console.WriteLine($"      busy-loop: {n} new frames/s (screen changes only)");
     }
