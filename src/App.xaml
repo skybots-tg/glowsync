@@ -1,0 +1,11 @@
+<Application
+    x:Class="GlowSync.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    ShutdownMode="OnExplicitShutdown">
+    <!--  WPF UI theme dictionaries are merged on first use of the settings window (AppController.ShowSettings),
+          so the tray-only process does not keep megabytes of styles loaded.  -->
+    <Application.Resources>
+        <ResourceDictionary />
+    </Application.Resources>
+</Application>
