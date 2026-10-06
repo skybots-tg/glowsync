@@ -1,52 +1,57 @@
-# GlowSync
+# GlowSync — ambient light for Skydimo and Adalight LED strips on Windows
 
-Подсветка монитора для Windows: лента повторяет цвета с краёв экрана, пляшет под музыку или светит эффектами.
-Замена родной программы Skydimo — живёт в трее, окно само никогда не открывается, гаснет вместе с монитором.
+**English** · [Русский](README.ru.md)
 
-> **English:** Windows ambient-light app for Skydimo/Adalight LED strips (screen sync, music, effects).
-> Tray-only, turns the strip off with the monitor, imports an existing Skydimo setup. UI is in Russian.
+The LED strip behind your monitor mirrors the colors at the edges of the screen, dances to music or runs effects.
+GlowSync is a lightweight, open-source replacement for the official Skydimo app (and an Ambilight-style alternative
+to Prismatik / HyperHDR for DIY Adalight strips). It lives in the tray, never pops up on its own and turns the strip off
+together with the monitor.
 
-![Главное окно](docs/screenshot.png)
+**[⬇ Download GlowSync.exe](https://github.com/skybots-tg/glowsync/releases/latest/download/GlowSync.exe)** · Windows 10 (1903+) / 11 · free, MIT
 
-## Возможности
+> The interface is in Russian for now.
 
-- **Синхронизация с экраном** — DXGI Desktop Duplication, кадр уменьшается на видеокарте, нагрузка на процессор ~0,1 %.
-  Настройки: частота 10–60 кадров/с, плавность, насыщенность, гамма, глубина захвата, смешивание соседних
-  светодиодов, порог чёрного, автоудаление чёрных полос у широкоформатных фильмов (субтитры в полосе не сбивают).
-- **Музыка** — звук берётся с устройства воспроизведения (WASAPI loopback, микрофон не нужен):
-  спектр, пульс, VU-метр. Переключение наушники/колонки подхватывается само.
-- **Эффекты** — радуга, переливание, дыхание, один цвет, комета.
-- **Гаснет вместе с монитором** — двумя независимыми способами, потому что одного мало:
-  1. сигналы Windows о состоянии экрана (console display state, session display status, monitor power);
-  2. опрос самого монитора по DDC/CI (VCP 0xD6) раз в 2 секунды — ловит выключение кнопкой монитора,
-     о котором Windows не сообщает вообще.
+![Main window](docs/screenshot.png)
 
-  Монитор, который не отвечает на DDC/CI, никогда не погасит ленту сам по себе, одиночный пропущенный
-  ответ — тоже (нужно три подряд). Выключение применяется, если экран погашен дольше 2 секунд, включение —
-  сразу: это спасает от мониторов, которые при засыпании десяток раз моргают вкл/выкл. Лента гаснет также
-  при сне и выключении компьютера, по желанию — при блокировке (Win + L).
-- **Ночной режим** — ограничение яркости по расписанию. **Баланс белого** R/G/B, если лента уходит в синеву.
-- **Глобальные горячие клавиши** с настройкой и ненавязчивой подсказкой на экране, которая не забирает фокус у игр.
-- **Автопоиск и автопереподключение** ленты: выдернули USB, компьютер поспал, порт занят другой программой —
-  подключится само, без перезапуска. Bluetooth-порты не опрашиваются (их опрос вешает систему на секунды).
-- **Редактор раскладки** (сколько светодиодов на каждой стороне, начало, направление, сдвиг) и тест сторон.
-- **Импорт настроек Skydimo** одной кнопкой: яркость, режим, раскладка, частота, горячие клавиши.
-- Лог ограничен 1 МБ (у Skydimo логи разрастались до 15 ГБ).
+## Features
 
-## Что нужно
+- **Screen sync** via DXGI Desktop Duplication. The frame is downscaled on the GPU, CPU load is about 0.1 %.
+  Settings: 10–60 fps, smoothing, saturation, gamma, capture depth, blending of neighbouring LEDs, black threshold,
+  automatic letterbox (black bar) detection for widescreen movies (subtitles in the bar do not confuse it).
+- **Music mode**: audio is taken from the playback device (WASAPI loopback, no microphone needed):
+  spectrum, pulse, VU meter. Switching between headphones and speakers is picked up automatically.
+- **Effects**: rainbow, color cycle, breathing, solid color, comet.
+- **Turns off with the monitor**, detected two independent ways, because one is not enough:
+  1. Windows display-state notifications (console display state, session display status, monitor power);
+  2. polling the monitor itself over DDC/CI (VCP 0xD6) every 2 seconds. This catches the monitor being switched off
+     with its own power button, which Windows does not report at all.
 
-- Windows 10 (1903+) или Windows 11.
-- [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) — если его нет, Windows предложит
-  скачать при первом запуске.
-- Лента с контроллером Skydimo (проверено на **SK0127**, 65 светодиодов, USB-чип CH340) — или любая
-  самодельная лента с прошивкой **Adalight** (Arduino, ESP и подобные).
+  A monitor that does not answer DDC/CI never turns the strip off by itself, and neither does a single missed answer
+  (three in a row are needed). Turning off applies after the screen has been dark for more than 2 seconds, turning on
+  is instant: this handles monitors that blink on and off a dozen times while going to sleep. The strip also goes dark
+  on sleep and shutdown and, optionally, on lock (Win + L).
+- **Night mode**: brightness limit on a schedule. **White balance** R/G/B if the strip looks too blue.
+- **Global hotkeys** with an unobtrusive on-screen hint that does not steal focus from games.
+- **Auto-detect and auto-reconnect**: unplugged USB, sleep, port busy with another program: it reconnects without
+  a restart. Bluetooth COM ports are skipped (probing them freezes the system for seconds).
+- **Layout editor** (LEDs per side, start corner, direction, offset) and a side test.
+- **One-click import of Skydimo settings**: brightness, mode, layout, frame rate, hotkeys.
+- Log is capped at 1 MB (Skydimo's logs were known to grow to 15 GB).
 
-## Установка
+## Requirements
 
-**Готовый exe:** скачайте `GlowSync.exe` со страницы [Releases](../../releases), положите в любую папку и запустите.
-Программа поставит себя в автозапуск (тихо, в трей) и сама найдёт ленту на USB-порту.
+- Windows 10 (1903+) or Windows 11.
+- [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0). If it is missing, Windows offers to
+  download it on first launch.
+- A Skydimo LED strip (tested on **SK0127**, 65 LEDs, CH340 USB chip), or any DIY strip running **Adalight**
+  firmware (Arduino, ESP8266/ESP32 and similar).
 
-**Из исходников:**
+## Install
+
+**Prebuilt exe:** download [`GlowSync.exe`](https://github.com/skybots-tg/glowsync/releases/latest/download/GlowSync.exe),
+put it in any folder and run it. It adds itself to autostart (silent, tray only) and finds the strip on a USB port.
+
+**From source:**
 
 ```powershell
 git clone https://github.com/skybots-tg/glowsync.git
@@ -54,69 +59,70 @@ cd glowsync
 .\install.ps1
 ```
 
-`install.ps1` собирает проект, ставит его в `%LOCALAPPDATA%\Programs\GlowSync`, создаёт ярлык в меню «Пуск»
-и запускает. Этой же командой обновляется уже установленная копия.
+`install.ps1` builds the project, installs it to `%LOCALAPPDATA%\Programs\GlowSync`, creates a Start menu shortcut
+and launches it. The same command updates an existing install.
 
-Аргументы запуска: `--autostart` — тихий старт в трей (так прописан автозапуск), `--exit` — закрыть работающий экземпляр.
+Command-line options: `--autostart` starts silently in the tray (this is how autostart is registered),
+`--exit` closes a running instance.
 
-Файлы программы: настройки `%LOCALAPPDATA%\GlowSync\config.json`, лог `%LOCALAPPDATA%\GlowSync\logs`.
+Files: settings in `%LOCALAPPDATA%\GlowSync\config.json`, logs in `%LOCALAPPDATA%\GlowSync\logs`.
 
-## Горячие клавиши по умолчанию
+## Default hotkeys
 
-| Действие | Сочетание |
+| Action | Keys |
 |---|---|
-| Включить / выключить подсветку | Ctrl + Alt + Shift + F10 |
-| Ярче / темнее | Ctrl + Alt + Shift + ↑ / ↓ |
-| Следующий / предыдущий режим | Ctrl + Alt + Shift + → / ← |
+| Toggle the light | Ctrl + Alt + Shift + F10 |
+| Brighter / dimmer | Ctrl + Alt + Shift + ↑ / ↓ |
+| Next / previous mode | Ctrl + Alt + Shift + → / ← |
 
-Меняются в настройках, на вкладке «Поведение».
+They can be changed in the settings, on the «Поведение» (Behaviour) tab.
 
-## Если что-то не так
+## Troubleshooting
 
-| Симптом | Причина и что делать |
+| Symptom | Cause and fix |
 |---|---|
-| «Порт COM занят другой программой» | Запущен Skydimo или другой софт для ленты. В настройках → «Поведение» есть кнопка «Закрыть Skydimo и убрать из автозапуска» (с возможностью вернуть). |
-| Лента не гаснет с монитором | Проверьте на вкладке «Поведение», что монитор отвечает по DDC/CI. Если написано «монитор пока не отвечал» — включите DDC/CI в меню самого монитора. |
-| Устройство не найдено | Нужен драйвер USB-чипа (для Skydimo — CH340). Проверьте, что лента видна в диспетчере устройств как COM-порт. |
-| Цвета не на своих местах | Вкладка «Лента и устройство» → «Тест сторон»: слева красный, сверху зелёный, справа синий, снизу жёлтый, первый светодиод белый. Поправьте начало и направление. |
-| Тёмные сцены в фильме мерцают | Увеличьте «Порог чёрного» и «Плавность» на вкладке «Экран». |
-| Чёрный экран на видео из браузера | Защищённый контент (Netflix и подобные) не попадает в захват экрана — это ограничение Windows, не программы. |
+| "COM port is busy with another program" | Skydimo or other LED software is running. Settings → «Поведение» has a button that closes Skydimo and removes it from autostart (reversible). |
+| The strip does not turn off with the monitor | On the «Поведение» tab, check that the monitor answers DDC/CI. If it says it has not answered yet, enable DDC/CI in the monitor's own menu. |
+| Device not found | Install the USB-serial driver (CH340 for Skydimo). The strip must show up as a COM port in Device Manager. |
+| Colors are in the wrong places | «Лента и устройство» (Strip and device) tab → side test: left is red, top green, right blue, bottom yellow, the first LED white. Adjust start and direction. |
+| Dark movie scenes flicker | Increase the black threshold and smoothing on the «Экран» (Screen) tab. |
+| Black screen on browser video | DRM-protected content (Netflix and similar) is excluded from screen capture by Windows itself. |
 
-## Протокол Skydimo
+## Skydimo protocol
 
-Пригодится, если пишете своё: контроллеры Skydimo — это Adalight с другим заголовком кадра.
+Useful if you are writing your own software: Skydimo controllers are Adalight with a different frame header.
 
-- Порт: 115200 бод, 8N1.
-- Рукопожатие: отправить `Moni-A`, в ответ придёт `SK0127,` + 7 байт серийного номера + `\r\n`
-  (среди этих байтов бывают 0x0D и 0x0A, так что разбирать построчно нельзя).
-- Кадр: `'A' 'd' 'a' 0x00 <count_hi> <count_lo>` и дальше `count × RGB`, по 3 байта на светодиод.
-  У классического Adalight иначе: `'A' 'd' 'a'` + `(count-1)` + контрольный байт `hi ^ lo ^ 0x55`.
-- Контроллер ждёт ровно столько светодиодов, сколько указано для его модели (у SK0127 — 65).
-- Зоны захвата: экран делится на сетку (у SK0127 — 31×17), каждый светодиод берёт среднее по своей клетке;
-  к результату применяется гамма 2.2. Так получается картинка, неотличимая от родной программы
-  (сверено с реальным выводом Skydimo: расхождение ≤ 2 из 255).
+- Port: 115200 baud, 8N1.
+- Handshake: send `Moni-A`, the reply is `SK0127,` + 7 bytes of serial number + `\r\n`
+  (those bytes may contain 0x0D and 0x0A, so do not parse it line by line).
+- Frame: `'A' 'd' 'a' 0x00 <count_hi> <count_lo>` followed by `count × RGB`, 3 bytes per LED.
+  Classic Adalight differs: `'A' 'd' 'a'` + `(count-1)` + checksum byte `hi ^ lo ^ 0x55`.
+- The controller expects exactly as many LEDs as its model has (65 for SK0127).
+- Capture zones: the screen is split into a grid (31×17 for SK0127), each LED takes the average of its cell,
+  then gamma 2.2 is applied. The result is indistinguishable from the official app
+  (checked against real Skydimo output: difference ≤ 2 of 255).
 
-## Разработка
+## Development
 
 ```powershell
 dotnet build GlowSync.sln
 dotnet build tests -o $env:TEMP\gs-tests; & $env:TEMP\gs-tests\GlowSync.Tests.exe
 ```
 
-Тесты проверяют генератор раскладки (сверяется с картами Skydimo, если он установлен), разбор ответа
-контроллера, импорт настроек, сэмплер зон (против эталонного вывода Skydimo на градиенте), определение
-чёрных полос, ночное расписание, логику опроса монитора и настоящий захват экрана через видеокарту.
+Tests cover the layout generator (compared with Skydimo's maps if it is installed), controller reply parsing,
+settings import, the zone sampler (against reference Skydimo output on a gradient), letterbox detection,
+the night schedule, monitor polling logic and real GPU screen capture.
 
-Две грабли, на которые стоит обратить внимание, если делаете похожее:
+Pitfalls worth knowing if you build something similar:
 
-- **Vortice 3.8**: обёртка `IDXGIOutput5.DuplicateOutput1` рушит процесс с AccessViolation, поэтому метод
-  вызывается напрямую через vtable (см. `DesktopCapture.DuplicateOutput1`).
-- **`POWERBROADCAST_SETTING`** несёт ровно один байт данных после GUID и длины. Если читать его как
-  32-битное значение, в старшие байты попадает мусор из-за буфера, и «экран выключен» превращается
-  в «включён» (см. `SystemEvents.OnPowerSettingChange`).
-- **`System.IO.Ports`** намеренно не используется: его фоновый поток роняет процесс, если USB-адаптер
-  выдернуть при открытом порте. Вместо него — тонкая обёртка над `CreateFile`/`WriteFile`.
+- **Vortice 3.8**: the `IDXGIOutput5.DuplicateOutput1` wrapper crashes the process with an AccessViolation, so the method
+  is called directly through the vtable (see `DesktopCapture.DuplicateOutput1`).
+- **`POWERBROADCAST_SETTING`** carries exactly one data byte after the GUID and length. Reading it as a 32-bit value
+  pulls garbage from the buffer into the high bytes, and "display off" turns into "on"
+  (see `SystemEvents.OnPowerSettingChange`).
+- **`System.IO.Ports`** is deliberately not used: its background thread crashes the process if the USB adapter is
+  unplugged while the port is open. A thin wrapper over `CreateFile`/`WriteFile` is used instead.
 
-## Лицензия
+## License
 
-MIT — делайте что хотите, автор ничего не гарантирует.
+MIT. Do whatever you want, no warranty.
